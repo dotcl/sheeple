@@ -16,6 +16,7 @@
   (declare (ignorable verbose full))
   #+(or cmu scl) (ext:gc :verbose verbose :full full)
   #+sbcl (sb-ext:gc :full full)
+  #+dotcl (dotcl:gc :full full)
   #+allegro (excl:gc (not (null full)))
   #+clisp (ext:gc)
   #+ecl (si:gc t)
@@ -43,6 +44,7 @@
    portability reasons, OBJECT most not be NIL."
   (assert (not (null object)))
   #+sbcl (sb-ext:make-weak-pointer object)
+  #+dotcl (dotcl:make-weak-pointer object)
   #+(or cmu scl) (ext:make-weak-pointer object)
   #+clisp (ext:make-weak-pointer object)
   #+ecl (error "not implemented")
@@ -65,6 +67,7 @@
 (defun weak-pointer-p (object)
   "Returns true if OBJECT is a weak pointer and NIL otherwise."
   #+sbcl (sb-ext:weak-pointer-p object)
+  #+dotcl (dotcl:weak-pointer-p object)
   #+(or cmu scl) (ext:weak-pointer-p object)
   #+clisp (ext:weak-pointer-p object)
   #+ecl (error "not implemented")
@@ -73,6 +76,7 @@
 (defun weak-pointer-value (weak-pointer)
   "If WEAK-POINTER is valid, returns its value. Otherwise, returns NIL."
   #+sbcl (values (sb-ext:weak-pointer-value weak-pointer))
+  #+dotcl (values (dotcl:weak-pointer-value weak-pointer))
   #+(or cmu scl) (values (ext:weak-pointer-value weak-pointer))
   #+clisp (values (ext:weak-pointer-value weak-pointer))
   #+ecl (error "not implemented")
@@ -100,7 +104,7 @@
 
 (defun weakness-keyword-arg (weakness)
   (declare (ignorable weakness))
-  #+sbcl :weakness
+  #+(or sbcl dotcl) :weakness
   #+(or clisp openmcl) :weak
   #+lispworks :weak-kind
   #+allegro (case weakness (:key :weak-keys) (:value :values))
@@ -109,24 +113,24 @@
 (defun weakness-keyword-opt (weakness)
   (ecase weakness
     (:key
-     #+(or lispworks sbcl clisp openmcl) :key
+     #+(or lispworks sbcl dotcl clisp openmcl) :key
      #+(or allegro cmu) t
-     #-(or lispworks sbcl clisp openmcl allegro cmu)
+     #-(or lispworks sbcl dotcl clisp openmcl allegro cmu)
      (error "Your Lisp does not support weak key hash-tables."))
     (:value
      #+allegro :weak
-     #+(or clisp openmcl sbcl lispworks) :value
-     #-(or allegro clisp openmcl sbcl lispworks)
+     #+(or clisp openmcl sbcl dotcl lispworks) :value
+     #-(or allegro clisp openmcl sbcl dotcl lispworks)
      (error "Your Lisp does not support weak value hash-tables."))
     (:key-or-value
-     #+(or clisp sbcl) :key-or-value
+     #+(or clisp sbcl dotcl) :key-or-value
      #+lispworks :either
-     #-(or clisp sbcl lispworks)
+     #-(or clisp sbcl dotcl lispworks)
      (error "Your Lisp does not support weak key-or-value hash-tables."))
     (:key-and-value
-     #+(or clisp sbcl) :key-and-value
+     #+(or clisp sbcl dotcl) :key-and-value
      #+lispworks :both
-     #-(or clisp sbcl lispworks)
+     #-(or clisp sbcl dotcl lispworks)
      (error "Your Lisp does not support weak key-and-value hash-tables."))))
 
 (defun make-weak-hash-table (&rest args &key weakness &allow-other-keys)
@@ -157,7 +161,7 @@
 
 (defun hash-table-weakness (ht)
   "Returns one of NIL, :KEY, :VALUE, :KEY-OR-VALUE or :KEY-AND-VALUE."
-  #-(or allegro sbcl clisp cmu openmcl lispworks)
+  #-(or allegro sbcl dotcl clisp cmu openmcl lispworks)
   (declare (ignore ht))
   ;; keep this first if any of the other lisps bugously insert a NIL
   ;; for the returned (values) even when *read-suppress* is NIL (e.g. clisp)
@@ -166,6 +170,7 @@
             (read-from-string "(sb-ext:hash-table-weakness ht)")
             nil)
         (values))
+  #+dotcl (dotcl:hash-table-weakness ht)
   #+allegro (cond ((excl:hash-table-weak-keys ht) :key)
                    ((eq (excl:hash-table-values ht) :weak) :value))
   #+clisp (ext:hash-table-weak-p ht)
@@ -214,6 +219,7 @@
    accessible when FUNCTION is invoked."
   #+(or cmu scl) (ext:finalize object function)
   #+sbcl (sb-ext:finalize object function)
+  #+dotcl (dotcl:finalize object function)
   #+ecl (let ((next-fn (ext:get-finalizer object)))
           (ext:set-finalizer
            object (lambda (obj)
@@ -278,6 +284,7 @@
   #+cmu (ext:cancel-finalization object)
   #+scl (ext:cancel-finalization object nil)
   #+sbcl (sb-ext:cancel-finalization object)
+  #+dotcl (dotcl:cancel-finalization object)
   #+ecl (ext:set-finalizer object nil)
   #+allegro
   (progn
